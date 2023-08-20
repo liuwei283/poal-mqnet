@@ -657,17 +657,17 @@ def main():
 
 	warnings.filterwarnings('ignore')
 	dataset_name = args.dname
+
+	# the path of the dataset
 	train_path = os.path.join(os.path.abspath('./../') + '/data/', '%s_train.txt' % dataset_name)
 	print(train_path)
 	test_path = os.path.join(os.path.abspath('./../') + '/data/', '%s_test.txt' % dataset_name)
 	print(test_path)
 
 
-
-
-	cnt = 0
+	cnt = 0 # the count of the repeat times
 	random.seed(4666)
-	repeat = args.repeat
+	repeat = args.repeat # repeat times of the experiment
 	tot_acc = []
 	tot_count_ood = []
 	tot_cnt_ood = []
@@ -686,8 +686,7 @@ def main():
 		acc = []
 		count_ood = []
 
-
-		dict_train_idx=labeled_data+unlabeled_data
+		dict_train_idx = labeled_data + unlabeled_data
 
 		kernel = 1.0 * RBF(1.0)
 		if args.model == 'GPC':

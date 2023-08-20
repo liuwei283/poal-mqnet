@@ -20,4 +20,4 @@ class EntropySamplingIDEAL(Strategy):
 			else:
 				Y_id_ood[i] = inf_num
 		U = U.mul(Y_id_ood)
-		return idxs_unlabeled[U.sort()[1][:n]]
+		return idxs_unlabeled[U.sort()[1][:n]] # ideally select in distribution values only

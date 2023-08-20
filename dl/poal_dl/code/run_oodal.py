@@ -20,25 +20,31 @@ import arguments
 from parameters import *
 from utils import *
 
-from query_strategies import RandomSampling, EntropySampling, EntropySamplingIDEAL, POAL_PSES
-# parameters
-print(torch.cuda.is_available())
-args_input = arguments.get_args()
-NUM_QUERY = args_input.batch
-NUM_INIT_LB = args_input.initseed 
-NUM_ROUND = int(args_input.quota / args_input.batch)
-DATA_NAME = args_input.dataset
-STRATEGY_NAME = args_input.ALstrategy
-MODEL_NAME = args_input.model
+from query_strategies import RandomSampling, EntropySampling, EntropySamplingIDEAL, POAL_PSES, MQ_Net
 
-SEED = args_input.seed
+# parameters
+print(torch.cuda.is_available()) # check whether gpu is available
+args_input = arguments.get_args() # parse the input arguments
+NUM_QUERY = args_input.batch # batch size of each active learning iteration
+NUM_INIT_LB = args_input.initseed # number of initial size of labeling pool
+NUM_ROUND = int(args_input.quota / args_input.batch) # number of active learning iteration
+DATA_NAME = args_input.dataset # name of the datasets
+STRATEGY_NAME = args_input.ALstrategy # acquisition function / al strategy
+MODEL_NAME = args_input.model # e.g. resnet / dl model name
+
+if DATA_NAME == 'CIFAR10':
+	num_class = 10
+else:
+	num_class = 100
+
+SEED = args_input.seed # random seed number
 os.environ['CUDA_VISIBLE_DEVICES'] = str(args_input.gpu)
 
 torch.set_printoptions(profile='full')
 #print(args_input.gpu)
 #torch.cuda.set_device(args_input.gpu)
 
-sys.stdout = Logger(os.path.abspath('') + '/../logfile/' + DATA_NAME+ '_'  + STRATEGY_NAME + '_' + str(NUM_QUERY) + '_' + str(NUM_INIT_LB) +  '_' + str(args_input.quota) + '_' + MODEL_NAME + '_normal_log.txt')
+sys.stdout = Logger(os.path.abspath('') + '/dl/poal_dl/logfile/' + DATA_NAME+ '_'  + STRATEGY_NAME + '_' + str(NUM_QUERY) + '_' + str(NUM_INIT_LB) +  '_' + str(args_input.quota) + '_' + MODEL_NAME + '_normal_log.txt')
 warnings.filterwarnings('ignore')
 
 args = args_pool[DATA_NAME]
@@ -55,9 +61,11 @@ X_tr, Y_tr, X_te, Y_te = get_dataset(DATA_NAME)
 X_tr = X_tr
 Y_tr = Y_tr
 
+# print the size of the dataset
+
 # start experiment
-n_pool = len(Y_tr)
-n_test = len(Y_te)
+n_pool = len(Y_tr) # number of data instance in the training pool initially
+n_test = len(Y_te) # number of data instance in the testing dataset
 print('Number of labeled pool: {}'.format(NUM_INIT_LB))
 print('Number of unlabeled pool: {}'.format(n_pool - NUM_INIT_LB))
 print('Number of testing pool: {}'.format(n_test))
@@ -82,13 +90,13 @@ all_ood_sample_num = []
 
 while (iteration > 0):
 	iteration = iteration - 1
-	start = datetime.datetime.now()
+	start = datetime.datetime.now() # start time
 
 	# generate initial labeled pool
-	idxs_lb = np.zeros(n_pool, dtype=bool)
-	idxs_tmp = np.arange(n_pool)
-	np.random.shuffle(idxs_tmp)
-	idxs_lb[idxs_tmp[:NUM_INIT_LB]] = True
+	idxs_lb = np.zeros(n_pool, dtype=bool) # the number of training data
+	idxs_tmp = np.arange(n_pool) # array range from 0 to n_pool - 1
+	np.random.shuffle(idxs_tmp) # shuffled training data idx
+	idxs_lb[idxs_tmp[:NUM_INIT_LB]] = True # selected labeled data is True
 
 	# only for special cases that need additional data
 	new_X = torch.empty(0)
@@ -104,6 +112,8 @@ while (iteration > 0):
 		strategy = EntropySamplingIDEAL(X_tr, Y_tr, idxs_lb, net, handler, args)
 	elif STRATEGY_NAME == 'POAL_PSES':
 		strategy = POAL_PSES(X_tr, Y_tr, idxs_lb, net, handler, args)
+	elif STRATEGY_NAME == 'MQ_NET':
+		strategy = MQ_Net(X_tr, Y_tr, idxs_lb, net, handler, args)
 	else:
 		print('No legal input of AL strategy, please try again.')
 		sys.exit('sorry, goodbye!')
@@ -114,27 +124,28 @@ while (iteration > 0):
 	#print('RANDOM SEED {}'.format(SEED))
 	print(type(strategy).__name__)
 	
-	ood_sample_num = np.zeros(NUM_ROUND+1)
+	ood_sample_num = np.zeros(NUM_ROUND+1) # ood sample in each round
 	# round 0 accuracy
+
 	
-	ood_sample_num[0] = strategy.train()
+	ood_sample_num[0] = strategy.train() # the first round of the model training, so the number of ood samples is randomly
 	
 	#strategy.train()
 	P = strategy.predict(X_te, Y_te)
 	acc = np.zeros(NUM_ROUND+1)
-	acc[0] = 1.0 * (Y_te==P).sum().item() / len(Y_te)
+	acc[0] = 1.0 * (Y_te==P).sum().item() / len(Y_te) # accuracy of the model
 	
-	print('Round 0\ntesting accuracy {}'.format(acc[0]))
+	print('Round 0\ntesting accuracy {}'.format(acc[0])) # initial teseting, random sampling labeled data without al strategy
 	print('Round 0 ood sample num {}'.format(ood_sample_num[0]))
 	print('\n')
 	
-	for rd in range(1, NUM_ROUND+1):
+	for rd in range(1, NUM_ROUND+1): # round number
 		print('Round {}'.format(rd))
 		high_confident_idx = []
 		high_confident_pseudo_label = []
 		# query
 		q_idxs = strategy.query(NUM_QUERY)
-		idxs_lb[q_idxs] = True
+		idxs_lb[q_idxs] = True # label the queried indices
 	
 		# update
 		strategy.update(idxs_lb)

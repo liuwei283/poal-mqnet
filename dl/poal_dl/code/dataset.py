@@ -10,7 +10,7 @@ from PIL import Image
 from torch.utils.data import ConcatDataset, Dataset
 
 # for openml datasets
-import openml
+# import openml
 from sklearn.preprocessing import LabelEncoder
 
 def get_dataset(name):
@@ -32,6 +32,7 @@ def get_dataset(name):
         raise NotImplementedError
 
 def get_CIFAR10(ratio):
+    # prepare training data into tensor
     data_tr = datasets.CIFAR10('./../data/CIFAR10', train=True, download=True)
     data_te = datasets.CIFAR10('./../data/CIFAR10', train=False, download=True)
     X_tr = data_tr.data
@@ -39,9 +40,10 @@ def get_CIFAR10(ratio):
     X_te = data_te.data
     Y_te = torch.from_numpy(np.array(data_te.targets)).long()
 
+    # total calss number: 10
     label_set = [0,1,2,3,4,5,6,7,8,9]
-    ID_label_num = int(10 * (1.0 - ratio))
-    OOD_label_num = int(10 * ratio)
+    ID_label_num = int(10 * (1.0 - ratio)) # in distribution class number
+    OOD_label_num = int(10 * ratio) # out of distribution class number
     ID_labels = label_set[0:ID_label_num]
     OOD_labels = label_set[ID_label_num:]
     X_tr_id = []
@@ -52,7 +54,7 @@ def get_CIFAR10(ratio):
     X_tr_ood = []
     Y_tr_ood = []
 
-    random.seed(4666)
+    random.seed(4666) # radom seed initialization
     nan_num = torch.tensor(-1)
     for i in range(Y_tr.shape[0]):
         if Y_tr[i] in ID_labels:
@@ -62,15 +64,14 @@ def get_CIFAR10(ratio):
             X_tr_ood.append(X_tr[i])
             Y_tr_ood.append(Y_tr[i])
     for i in range(Y_te.shape[0]):
+        # only have in distribution data since we pursure for best performance in classifying in distribution data
         if Y_te[i] in ID_labels:
             X_te_id.append(X_te[i])
             Y_te_id.append(Y_te[i])
     X_tr_fin = X_tr_id + X_tr_ood
     Y_tr_id = torch.tensor(np.array(Y_tr_id)).type_as(Y_tr)
-    Y_tr_ood = nan_num * torch.ones(len(Y_tr_ood)).type_as(Y_tr)
+    Y_tr_ood = nan_num * torch.ones(len(Y_tr_ood)).type_as(Y_tr) # all elements are -1 in this tensor object, since we consider those data are out of distribution data
     
-    
-
     Y_tr_fin = torch.cat((Y_tr_id, Y_tr_ood),0).type_as(Y_tr)
 
     X_tr_fin = np.array(X_tr_fin).astype(X_tr.dtype)

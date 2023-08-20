@@ -16,7 +16,7 @@ class POAL_PSES(Strategy):
 		Y = self.Y[idxs_unlabeled]
 		U = self.entropy(X,Y)
 		maha_score = self.maha(X,Y)
-		top = select_poal(U.tolist(), maha_score.tolist(), None, n)
+		top = select_poal(U.tolist(), maha_score.tolist(), None, n) # acquisition score, m score and query number
 		return idxs_unlabeled[top]
 
 	def entropy(self, X, Y):
@@ -29,7 +29,7 @@ class POAL_PSES(Strategy):
 	def maha(self, X, Y):
 
 		# get id train loader
-		idxs_train = np.arange(self.n_pool)[self.idxs_lb]
+		idxs_train = np.arange(self.n_pool)[self.idxs_lb] # indices of labeled data (also the training data in the current iteration)
 		X_train_full = self.X[idxs_train]
 		Y_train_full = self.Y[idxs_train]
 		a = list(range(Y_train_full.shape[0]))
@@ -48,18 +48,18 @@ class POAL_PSES(Strategy):
 							**self.args['loader_tr_args'])
 
 		# set feature_list shape
-		model = self.get_model()
-		temp_x = torch.rand(2, X_train[0].shape[2], X_train[0].shape[0], X_train[0].shape[1]).to(self.device)
+		model = self.get_model() # the classifier model
+		temp_x = torch.rand(2, X_train[0].shape[2], X_train[0].shape[0], X_train[0].shape[1]).to(self.device) # random tensor: 2, channel, height, width
 		temp_x = Variable(temp_x)
-		temp_list = model.feature_list(temp_x)[1]
-		num_output = len(temp_list)
+		temp_list = model.feature_list(temp_x)[1] # feature representation from different layers
+		num_output = len(temp_list) # number of the extracted features
 		feature_list = np.empty(num_output)
 		count = 0
 		for out in temp_list:
-			feature_list[count] = out.size(1)
+			feature_list[count] = out.size(1) # length of the vector
 			count += 1
 
-		sample_mean, sample_cov = self.sample_estimator(model, self.args['num_class'], feature_list, train_loader)
+		sample_mean, sample_cov = self.sample_estimator(model, self.args['num_class'], feature_list, train_loader) # 回来的是training data的每一层的mean(class不一样)和shared covariance
 		# get mahalanobis score
 		test_loader = DataLoader(self.handler(X, Y, transform=self.args['transform']),
 							shuffle=False, **self.args['loader_te_args'])
@@ -75,7 +75,7 @@ class POAL_PSES(Strategy):
 		# the smaller the better
 		Maha_avg_score = np.mean(Maha_score, axis = 1)
 
-		inv_Maha_avg_score = np.max(Maha_avg_score) - Maha_avg_score
+		inv_Maha_avg_score = np.max(Maha_avg_score) - Maha_avg_score # centered的M score 相对的
 		return inv_Maha_avg_score
 		
 	def get_Mahalanobis_score(self, model, test_loader, num_classes, sample_mean, precision, layer_index, magnitude = 0.01):
@@ -97,26 +97,27 @@ class POAL_PSES(Strategy):
 			out_features = torch.mean(out_features, 2)
 			
 			# compute Mahalanobis score
+			# 算出来马氏距离到所有class的高斯分布的mean的距离
 			gaussian_score = 0
-			for i in range(num_classes):
+			for i in range(num_classes): # 每一个class的距离
 				batch_sample_mean = sample_mean[layer_index][i]
 				zero_f = out_features.data - batch_sample_mean
-				term_gau = -0.5*torch.mm(torch.mm(zero_f, precision[layer_index]), zero_f.t()).diag()
+				term_gau = -0.5*torch.mm(torch.mm(zero_f, precision[layer_index]), zero_f.t()).diag() # 马氏距离越小这个越大
 				if i == 0:
 					gaussian_score = term_gau.view(-1,1)
 				else:
 					gaussian_score = torch.cat((gaussian_score, term_gau.view(-1,1)), 1)
 			
 			# Input_processing
-			sample_pred = gaussian_score.max(1)[1]
+			sample_pred = gaussian_score.max(1)[1] # index of the maximum gaussian score - i.e. the predicted class
 			batch_sample_mean = sample_mean[layer_index].index_select(0, sample_pred)
 			zero_f = out_features - Variable(batch_sample_mean)
-			pure_gau = -0.5*torch.mm(torch.mm(zero_f, Variable(precision[layer_index])), zero_f.t()).diag()
-			loss = torch.mean(-pure_gau)
+			pure_gau = -0.5*torch.mm(torch.mm(zero_f, Variable(precision[layer_index])), zero_f.t()).diag() # 每个data instance对他们最近的那个class的马氏距离
+			loss = torch.mean(-pure_gau) # transform the objective output to schale
 			loss.backward()
 			
-			gradient =  torch.ge(data.grad.data, 0)
-			gradient = (gradient.float() - 0.5) * 2
+			gradient =  torch.ge(data.grad.data, 0) # data的每一个
+			gradient = (gradient.float() - 0.5) * 2 # gradient > 0 => gradient = 1, gradient < 0 => gradient = -1
 			gradient.index_copy_(1, torch.LongTensor([0]).cuda(), gradient.index_select(1, torch.LongTensor([0]).to(self.device)) / (0.2023))
 			gradient.index_copy_(1, torch.LongTensor([1]).cuda(), gradient.index_select(1, torch.LongTensor([1]).to(self.device)) / (0.1994))
 			gradient.index_copy_(1, torch.LongTensor([2]).cuda(), gradient.index_select(1, torch.LongTensor([2]).to(self.device)) / (0.2010))
@@ -140,20 +141,20 @@ class POAL_PSES(Strategy):
 
 		return np.array(Mahalanobis)
 
-	def sample_estimator(self,model, num_classes, feature_list, train_loader):
+	def sample_estimator(self,model, num_classes, feature_list, train_loader): # feature list contains the length of the feature representation in each layer
 		"""
 		compute sample mean and precision (inverse of covariance)
 		return: sample_class_mean: list of class mean
 				precision: list of precisions
 		"""
-		import sklearn.covariance
+		import sklearn.covariance # calculate covariance matrix
 		
 		model.eval()
-		group_lasso = sklearn.covariance.EmpiricalCovariance(assume_centered=False)
+		group_lasso = sklearn.covariance.EmpiricalCovariance(assume_centered=False) # question: why is the assume center is True
 
 		num_output = len(feature_list)
-		num_sample_per_class = np.empty(num_classes)
-		num_sample_per_class.fill(0)
+		num_sample_per_class = np.empty(num_classes) # 每一个class的sample number
+		num_sample_per_class.fill(0) # 先设置成0
 		list_features = []
 		for i in range(num_output):
 			temp_list = []
@@ -161,20 +162,20 @@ class POAL_PSES(Strategy):
 				temp_list.append(0)
 			list_features.append(temp_list)
 		
-		for data, target,idx in train_loader:
+		for data, target, idx in train_loader:
 			data = data.to(self.device)
 			data = Variable(data, volatile=True)
 			output, out_features = model.feature_list(data)
 			
 			# get hidden features
 			for i in range(num_output):
-				out_features[i] = out_features[i].view(out_features[i].size(0), out_features[i].size(1), -1)
-				out_features[i] = torch.mean(out_features[i].data, 2)
+				out_features[i] = out_features[i].view(out_features[i].size(0), out_features[i].size(1), -1) # flatten dimensions after the third layer
+				out_features[i] = torch.mean(out_features[i].data, 2) # get the mean values -> tow dimension
 				
 			
 			# construct the sample matrix
-			for i in range(data.size(0)):
-				label = target[i]
+			for i in range(data.size(0)):  # data is the input training data
+				label = target[i] # label of this single instance
 				if num_sample_per_class[label] == 0:
 					out_count = 0
 					for out in out_features:
@@ -196,6 +197,8 @@ class POAL_PSES(Strategy):
 				temp_list[j] = torch.mean(list_features[out_count][j], 0)
 			sample_class_mean.append(temp_list)
 			out_count += 1
+
+		# sample class mean 储存的是 每一层的 每个class的feature representation 平均值
 			
 		precision = []
 		for k in range(num_output):
@@ -211,18 +214,20 @@ class POAL_PSES(Strategy):
 			temp_precision = group_lasso.precision_
 			temp_precision = torch.from_numpy(temp_precision).float().cuda()
 			precision.append(temp_precision)
+
+			# 算covariance的时候是不管class的，shared covariance matrix
 			
 		return sample_class_mean, precision
 
 def select_poal(infor_value1, infor_value2, costs, budget):
 	optimal_set = []
-	assert(len(infor_value1) == len(infor_value2))
-	numbers = len(infor_value1)
+	assert(len(infor_value1) == len(infor_value2)) # 两个score的数量必须一样
+	numbers = len(infor_value1) # the number of the data to be quried
 	#init
 	optimal_set = normal_pareto_optimization(infor_value1, infor_value2)
 
 	# 6 * budget can change
-	while len(optimal_set) < 6 * budget:
+	while len(optimal_set) < 6 * budget: # preselection for large scale data
 		#new index
 		index = [i for i in range(numbers)]
 		new_index = [x for x in index if x not in optimal_set]
@@ -234,7 +239,7 @@ def select_poal(infor_value1, infor_value2, costs, budget):
 		optimal_seti = [new_index[i] for i in optimal_set_tmp]
 		optimal_set.extend(optimal_seti)
 
-	if len(optimal_set) == budget:
+	if len(optimal_set) == budget: # no need to return more
 		return optimal_set
 
 	#new infor_value
@@ -251,7 +256,7 @@ def select_poal(infor_value1, infor_value2, costs, budget):
 def select_POSS_intersection(infor_value1, infor_value2, costs, budget):
 
 	if costs == None:
-		costs = np.ones(len(infor_value1))
+		costs = np.ones(len(infor_value1)) # 每一个unlabeled data的cost都是1
 	assert(len(infor_value1) == len(costs) == len(infor_value2))
 	num = len(infor_value1)
 	population = np.zeros((1, num))
@@ -275,9 +280,9 @@ def select_POSS_intersection(infor_value1, infor_value2, costs, budget):
 	pop_information = []
 	for round in np.arange(T):
 		# randomly select a solution from the population and mutate it to generate a new solution.
-		#offspring = np.abs(population[np.random.randint(0, popSize), :] - np.random.choice([1, 0], size=(num), p=[1/num, 1 - 1/num]))
+		# offspring = np.abs(population[np.random.randint(0, popSize), :] - np.random.choice([1, 0], size=(num), p=[1/num, 1 - 1/num]))
 		offspring = np.zeros(len(infor_value1))
-		offspring[random.sample(range(0,len(infor_value1)), budget)] = 1
+		offspring[random.sample(range(0,len(infor_value1)), budget)] = 1 # randomly selected candidate solution
 		# compute the fitness of the new solution.
 		offspringFit = np.array([0., 0., 0., 0., 0.])
 		offspringFit[2] = np.sum(offspring * costs)
@@ -288,25 +293,25 @@ def select_POSS_intersection(infor_value1, infor_value2, costs, budget):
 			offspringFit[3] = np.infty
 			offspringFit[4] = np.infty
 		else:
-			offspringFit[0] = np.sum(offspring * infor_value1)
-			offspringFit[1] = np.sum(offspring * infor_value2)
+			offspringFit[0] = np.sum(offspring * infor_value1) # sum of values of the infor values 1 
+			offspringFit[1] = np.sum(offspring * infor_value2) # sum of values of the infor values 2
 			a = (offspring * infor_value1)[np.nonzero(offspring * infor_value1)]
 			b = (offspring * infor_value2)[np.nonzero(offspring * infor_value2)]
-			offspringFit[3] = a.min() if len(a) > 0 else 0 
-			offspringFit[4] = b.min() if len(b) > 0 else 0 
+			offspringFit[3] = a.min() if len(a) > 0 else 0 # 所选data中最小的value1
+			offspringFit[4] = b.min() if len(b) > 0 else 0 # 所选data中最小的value2
 
 		# use the new solution to update the current population.
 		# if (fitness[0: popSize, 0] < offspringFit[0] and fitness[0: popSize, 1] <= offspringFit[1]) or (fitness[0: popSize, 0] <= offspringFit[0] and fitness[0: popSize, 1] < offspringFit[1]):
-		judge1 = np.array(fitness[0: popSize, 0] >= offspringFit[0]) & np.array(fitness[0: popSize, 1] > offspringFit[1]) & np.array(fitness[0: popSize, 2] < offspringFit[2])
+		judge1 = np.array(fitness[0: popSize, 0] >= offspringFit[0]) & np.array(fitness[0: popSize, 1] > offspringFit[1]) & np.array(fitness[0: popSize, 2] < offspringFit[2]) # 如果还没到budget直接加进去可以
 		judge2 = np.array(fitness[0: popSize, 0] > offspringFit[0]) & np.array(fitness[0: popSize, 1] >= offspringFit[1]) & np.array(fitness[0: popSize, 2] < offspringFit[2])  
 		judge3 = np.array(fitness[0: popSize, 0] > offspringFit[0]) & np.array(fitness[0: popSize, 1] > offspringFit[1]) & np.array(fitness[0: popSize, 2] <= offspringFit[2])
 
-		c= judge1 | judge2 
+		c = judge1 | judge2 
 		if c.any():
 			continue
 		else:
 			# deleteIndex = fitness[0: popSize, 0] >= offspringFit[0] * fitness[0: popSize, 1] >= offspringFit[1]
-			index = [i for i in range(len(fitness))]
+			index = [i for i in range(len(fitness))] # 
 			condi_1 = np.where(fitness[0: popSize, 0] <= offspringFit[0])
 			condi_2 = np.where(fitness[0: popSize, 1] <= offspringFit[1])
 			condi_3 = np.where(fitness[0: popSize, 2] >= offspringFit[2])
@@ -319,12 +324,12 @@ def select_POSS_intersection(infor_value1, infor_value2, costs, budget):
 		popSize = len(nodeleteIndex) + 1
 
 		# early stopping condition
-		if round > 0 and round % 200 == 0:
+		if round > 0 and round % 200 == 0: # 每逢200的倍数才进行early stopping的检测
 			# get current pareto set information
 			f = []
 			tmp = np.where(fitness[:, 2] == budget)[0]
 			for tmp_idx in tmp:
-				f.append(np.array([fitness[tmp_idx][0], fitness[tmp_idx][1]]))
+				f.append(np.array([fitness[tmp_idx][0], fitness[tmp_idx][1]])) 
 
 			# get MMD 
 			if len(pop_information)>0:

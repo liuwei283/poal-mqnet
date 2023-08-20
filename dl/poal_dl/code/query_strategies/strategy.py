@@ -22,20 +22,23 @@ class Strategy:
         #print(use_cuda)
         self.device = torch.device("cuda" if use_cuda else "cpu")
         #print(self.device)
-
         self.net_lpl = net_lpl
 
 
+
+
     def query(self, n):
+        # get the
         pass
+
     def get_model(self):
-        return self.clf
+        return self.clf # return classifier / model
         
-    def update(self, idxs_lb):
+    def update(self, idxs_lb): # update labeled data index - True and False array
         self.idxs_lb = idxs_lb
 
     def _train(self, epoch, loader_tr, optimizer):
-        self.clf.train()
+        self.clf.train() # set mode to train
         for batch_idx, (x, y, idxs) in enumerate(loader_tr):
             x, y = x.to(self.device), y.to(self.device)
             optimizer.zero_grad()
@@ -47,21 +50,21 @@ class Strategy:
 
     def train(self, X_train = None, Y_train = None):
         
-        n_epoch = self.args['n_epoch']
-        dim = self.X.shape[1:]
+        n_epoch = self.args['n_epoch'] # number of epoch
+        dim = self.X.shape[1:] # dimension of the input image
         self.clf = self.net(dim = dim, num_classes = self.args['num_class']).to(self.device)
         #optimizer = optim.SGD(self.clf.parameters(), **self.args['optimizer_args'])
         optimizer = optim.Adam(self.clf.parameters(), **self.args['optimizer_args'])
         if X_train is None:
-            idxs_train = np.arange(self.n_pool)[self.idxs_lb]
+            idxs_train = np.arange(self.n_pool)[self.idxs_lb] # id of labeled data instances
             X_train_full = self.X[idxs_train]
             Y_train_full = self.Y[idxs_train]
-        # find ID samples 
+        # find ID samples
         a = list(range(Y_train_full.shape[0]))
-        b = torch.where(Y_train_full<0)[0].numpy()
-        d = sorted(list(set(a).difference(set(b))))
+        b = torch.where(Y_train_full<0)[0].numpy() # idx of out of distribution data
+        d = sorted(list(set(a).difference(set(b)))) # sorted idx of in distribution data
 
-        Y_train = torch.index_select(Y_train_full, 0, torch.tensor(d))
+        Y_train = torch.index_select(Y_train_full, 0, torch.tensor(d)) # all training Y values (in distribution)
         if type(X_train_full) is np.ndarray:
             tmp = deepcopy(X_train_full)
             tmp = torch.from_numpy(tmp)
@@ -69,26 +72,13 @@ class Strategy:
             X_train = X_train.numpy().astype(X_train_full.dtype)
         else:
             X_train = torch.index_select(X_train_full, 0, torch.tensor(d))
-        ood_sample_num = Y_train_full.shape[0] - Y_train.shape[0]
+        ood_sample_num = Y_train_full.shape[0] - Y_train.shape[0] # odd sample number in this iteration
     
         loader_tr = DataLoader(self.handler(X_train, Y_train, transform=self.args['transform_train']),
                             shuffle=True, **self.args['loader_tr_args'])
 
         for epoch in range(1, n_epoch+1):
             self._train(epoch, loader_tr, optimizer)
-        return ood_sample_num
-
-
-        
-
-        loader_tr = DataLoader(self.handler(X_train, Y_train, transform=self.args['transform_train']),
-                            **self.args['loader_tr_args'])
-        #weight = 0.1
-        for epoch in range(1, n_epoch+1):
-            print(epoch)
-            #if epoch >= epoch_loss:
-            #     weight = 1.0
-            self._train_LPL(epoch, loader_tr, optimizer, optimizer_lpl, epoch_loss, weight, margin)
         return ood_sample_num
 
     def predict(self, X, Y):
@@ -103,7 +93,7 @@ class Strategy:
                 out, e1 = self.clf(x)
 
                 pred = out.max(1)[1]
-                P[idxs] = pred.cpu()
+                P[idxs] = pred.cpu() # indices of the maximum values of the predicted probabilities
         return P
 
     def predict_prob(self, X, Y):

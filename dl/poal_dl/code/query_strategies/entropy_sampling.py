@@ -11,4 +11,4 @@ class EntropySampling(Strategy):
 		probs = self.predict_prob(self.X[idxs_unlabeled], self.Y[idxs_unlabeled])
 		log_probs = torch.log(probs)
 		U = (probs*log_probs).sum(1)
-		return idxs_unlabeled[U.sort()[1][:n]]
+		return idxs_unlabeled[U.sort()[1][:n]] # [1] means indices
