@@ -78,7 +78,7 @@ def get_CIFAR10(ratio):
 
     X_te_id = np.array(X_te_id).astype(X_te.dtype)
     Y_te_id = torch.tensor(np.array(Y_te_id))
-    return X_tr_fin, Y_tr_fin, X_te_id, Y_te_id
+    return X_tr_fin, Y_tr_fin, X_te_id, Y_te_id # data: array, label: tensor
 
 def get_CIFAR100(ratio):
     data_tr = datasets.CIFAR100('./../data/CIFAR100', train=True, download=True)
@@ -136,22 +136,6 @@ def get_handler(name):
 
 
 class DataHandler3(Dataset):
-    def __init__(self, X, Y, transform=None):
-        self.X = X
-        self.Y = Y
-        self.transform = transform
-
-    def __getitem__(self, index):
-        x, y = self.X[index], self.Y[index]
-        if self.transform is not None:
-            x = Image.fromarray(x)
-            x = self.transform(x)
-        return x, y, index
-
-    def __len__(self):
-        return len(self.X)
-
-class DataHandler4(Dataset):
     def __init__(self, X, Y, transform=None):
         self.X = X
         self.Y = Y

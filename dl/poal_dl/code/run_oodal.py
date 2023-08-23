@@ -4,6 +4,7 @@ from model_new import get_net
 from torchvision import transforms
 
 import torch
+import time
 
 
 import warnings
@@ -32,10 +33,7 @@ DATA_NAME = args_input.dataset # name of the datasets
 STRATEGY_NAME = args_input.ALstrategy # acquisition function / al strategy
 MODEL_NAME = args_input.model # e.g. resnet / dl model name
 
-if DATA_NAME == 'CIFAR10':
-	num_class = 10
-else:
-	num_class = 100
+num_class = args_input.num_class
 
 SEED = args_input.seed # random seed number
 os.environ['CUDA_VISIBLE_DEVICES'] = str(args_input.gpu)
@@ -58,8 +56,8 @@ torch.backends.cudnn.deterministic = True
 
 # load dataset
 X_tr, Y_tr, X_te, Y_te = get_dataset(DATA_NAME)
-X_tr = X_tr
-Y_tr = Y_tr
+# X_tr = X_tr
+# Y_tr = Y_tr
 
 # print the size of the dataset
 
@@ -89,6 +87,7 @@ acq_time = []
 all_ood_sample_num = []
 
 while (iteration > 0):
+	print(" Experient iteration: " + str(iteration) + " starting...")
 	iteration = iteration - 1
 	start = datetime.datetime.now() # start time
 
@@ -98,11 +97,11 @@ while (iteration > 0):
 	np.random.shuffle(idxs_tmp) # shuffled training data idx
 	idxs_lb[idxs_tmp[:NUM_INIT_LB]] = True # selected labeled data is True
 
-	# only for special cases that need additional data
-	new_X = torch.empty(0)
-	new_Y = torch.empty(0)
+	# # only for special cases that need additional data
+	# new_X = torch.empty(0)
+	# new_Y = torch.empty(0)
 	
-	strategy = RandomSampling(X_tr, Y_tr, idxs_lb, net, handler, args)
+	# strategy = RandomSampling(X_tr, Y_tr, idxs_lb, net, handler, args)
 	
 	if STRATEGY_NAME == 'EntropySampling':
 		strategy = EntropySampling(X_tr, Y_tr, idxs_lb, net, handler, args)
@@ -113,20 +112,18 @@ while (iteration > 0):
 	elif STRATEGY_NAME == 'POAL_PSES':
 		strategy = POAL_PSES(X_tr, Y_tr, idxs_lb, net, handler, args)
 	elif STRATEGY_NAME == 'MQ_NET':
-		strategy = MQ_Net(X_tr, Y_tr, idxs_lb, net, handler, args)
+		strategy = MQ_Net(X_tr, Y_tr, idxs_lb, net, handler, args, args_input)
 	else:
 		print('No legal input of AL strategy, please try again.')
 		sys.exit('sorry, goodbye!')
 	
 	
 	# print info
-	print(DATA_NAME)
+	print("Dataset name: " + DATA_NAME )
 	#print('RANDOM SEED {}'.format(SEED))
 	print(type(strategy).__name__)
 	
 	ood_sample_num = np.zeros(NUM_ROUND+1) # ood sample in each round
-	# round 0 accuracy
-
 	
 	ood_sample_num[0] = strategy.train() # the first round of the model training, so the number of ood samples is randomly
 	
@@ -141,8 +138,8 @@ while (iteration > 0):
 	
 	for rd in range(1, NUM_ROUND+1): # round number
 		print('Round {}'.format(rd))
-		high_confident_idx = []
-		high_confident_pseudo_label = []
+		# high_confident_idx = []
+		# high_confident_pseudo_label = []
 		# query
 		q_idxs = strategy.query(NUM_QUERY)
 		idxs_lb[q_idxs] = True # label the queried indices
@@ -171,9 +168,10 @@ while (iteration > 0):
 	#save model
 	timestamp = re.sub('\.[0-9]*','_',str(datetime.datetime.now())).replace(" ", "_").replace("-", "").replace(":","")
 	model_path = './../modelpara/'+timestamp + DATA_NAME+ '_'  + STRATEGY_NAME + '_' + str(NUM_QUERY) + '_' + str(NUM_INIT_LB) +  '_' + str(args_input.quota) + '_' + MODEL_NAME  +'.params'
+	model_path_suffix = './../modelpara/'+timestamp + DATA_NAME+ '_'  + STRATEGY_NAME + '_' + str(NUM_QUERY) + '_' + str(NUM_INIT_LB) +  '_' + str(args_input.quota) + '_' + MODEL_NAME
+	strategy.save_model(model_path, model_path_suffix)
 	end = datetime.datetime.now()
 	acq_time.append(round(float((end-start).seconds),3))
-	torch.save(strategy.get_model().state_dict(), model_path)
 	
 # cal mean & standard deviation
 acc_m = []

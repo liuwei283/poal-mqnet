@@ -33,7 +33,7 @@ More options can be found in classical_ml/poal_classical_ml.py.
       -s 100 \
       -q 1000 \
       -b 100 \
-      -d CIFAR10_04 \
+      -d CIFAR10_06 \
       -t 3 \
       -g 0
 More options can be found in dl/code/arguments.py.

@@ -31,8 +31,8 @@ class Strategy:
         # get the
         pass
 
-    def get_model(self):
-        return self.clf # return classifier / model
+    def save_model(self, model_path, model_path_suffix=None):
+        torch.save(self.clf.state_dict(), model_path) # should be modified to save model path 
         
     def update(self, idxs_lb): # update labeled data index - True and False array
         self.idxs_lb = idxs_lb
