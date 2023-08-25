@@ -42,7 +42,7 @@ torch.set_printoptions(profile='full')
 #print(args_input.gpu)
 #torch.cuda.set_device(args_input.gpu)
 
-sys.stdout = Logger(os.path.abspath('') + '/dl/poal_dl/logfile/' + DATA_NAME+ '_'  + STRATEGY_NAME + '_' + str(NUM_QUERY) + '_' + str(NUM_INIT_LB) +  '_' + str(args_input.quota) + '_' + MODEL_NAME + '_normal_log.txt')
+sys.stdout = Logger(os.path.abspath('') + '/../logfile/' + DATA_NAME+ '_'  + STRATEGY_NAME + '_' + str(NUM_QUERY) + '_' + str(NUM_INIT_LB) +  '_' + str(args_input.quota) + '_' + MODEL_NAME + '_normal_log.txt')
 warnings.filterwarnings('ignore')
 
 args = args_pool[DATA_NAME]

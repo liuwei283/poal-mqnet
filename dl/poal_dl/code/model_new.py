@@ -306,8 +306,8 @@ class BaseModel(nn.Module, metaclass=ABCMeta):
 class ResNet_CSI(BaseModel):
     def __init__(self, channel=3, num_classes=10, record_embedding: bool = False,
                  no_grad: bool = False):
-        last_dim = 512 * block.expansion
         block = BasicBlock
+        last_dim = 512 * block.expansion
         num_blocks = [2, 2, 2, 2]
         super(ResNet_CSI, self).__init__(last_dim, num_classes)
 

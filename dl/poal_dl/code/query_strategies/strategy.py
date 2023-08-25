@@ -6,6 +6,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from torch.autograd import Variable
 from copy import deepcopy
+from tqdm import tqdm
 
 
 
@@ -82,13 +83,14 @@ class Strategy:
         return ood_sample_num
 
     def predict(self, X, Y):
+        print("Predicting:")
         loader_te = DataLoader(self.handler(X, Y, transform=self.args['transform']),
                             shuffle=False, **self.args['loader_te_args'])
 
         self.clf.eval()
         P = torch.zeros(len(Y), dtype=Y.dtype)
         with torch.no_grad():
-            for x, y, idxs in loader_te:
+            for x, y, idxs in tqdm(loader_te):
                 x, y = x.to(self.device), y.to(self.device)
                 out, e1 = self.clf(x)
 

@@ -1,1 +1,7 @@
 to-do.md
+dl/poal_dl/data/*
+dl/poal_dl/logfile/*
+dl/poal_dl/weights/*
+*.condor
+*.sh
+
