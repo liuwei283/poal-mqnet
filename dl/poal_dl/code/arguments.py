@@ -24,7 +24,7 @@ def get_args():
 	#parser.add_argument('--help', '-h', default=False, action='store_true', help='verbose')
 	parser.add_argument('--cuda', action='store_true', help='If training is to be done on a GPU')
 	parser.add_argument('--model', '-m', default='ResNet18', type=str, help='dataset name')
-	parser.add_argument('--initseed', '-s', default = 1000, type = int, help = 'Initial pool of labeled data') # the number of data in the labled pool
+	parser.add_argument('--initseed', '-s', default = 500, type = int, help = 'Initial pool of labeled data') # the number of data in the labled pool
 	parser.add_argument('--gpu', '-g', default = 4, type = int, help = 'which gpu') # the number of GPU
 	parser.add_argument('--seed', default=4666, type=int, help='random seed')
 	parser.add_argument('--num_class', default=10, type=int, help='number of image classes (default: 10 for CIFAR10)')

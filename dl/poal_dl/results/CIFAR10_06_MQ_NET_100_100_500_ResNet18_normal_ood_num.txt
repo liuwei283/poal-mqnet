@@ -1,0 +1,15 @@
+dataset: CIFAR10_06
+model: ResNet18
+AL strategy: MQ_NET
+number of labeled pool: 100
+number of unlabeled pool: 49900
+number of testing pool: 4000
+batch size: 100
+quota: 500
+time of repeat experiments: 1
+Size of training set is 100, the number of ood sample contained is 65.0.
+Size of training set is 200, the number of ood sample contained is 124.0.
+Size of training set is 300, the number of ood sample contained is 181.0.
+Size of training set is 400, the number of ood sample contained is 239.0.
+Size of training set is 500, the number of ood sample contained is 295.0.
+Size of training set is 600, the number of ood sample contained is 394.0.

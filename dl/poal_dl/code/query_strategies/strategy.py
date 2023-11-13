@@ -25,12 +25,12 @@ class Strategy:
         #print(self.device)
         self.net_lpl = net_lpl
 
-
-
-
     def query(self, n):
         # get the
         pass
+
+    def get_model(self):
+        return self.clf
 
     def save_model(self, model_path, model_path_suffix=None):
         torch.save(self.clf.state_dict(), model_path) # should be modified to save model path 
@@ -50,7 +50,7 @@ class Strategy:
             optimizer.step()
 
     def train(self, X_train = None, Y_train = None):
-        
+        print("Training...")
         n_epoch = self.args['n_epoch'] # number of epoch
         dim = self.X.shape[1:] # dimension of the input image
         self.clf = self.net(dim = dim, num_classes = self.args['num_class']).to(self.device)
@@ -78,7 +78,7 @@ class Strategy:
         loader_tr = DataLoader(self.handler(X_train, Y_train, transform=self.args['transform_train']),
                             shuffle=True, **self.args['loader_tr_args'])
 
-        for epoch in range(1, n_epoch+1):
+        for epoch in tqdm(range(1, n_epoch+1)):
             self._train(epoch, loader_tr, optimizer)
         return ood_sample_num
 

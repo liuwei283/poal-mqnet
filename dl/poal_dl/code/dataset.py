@@ -54,7 +54,7 @@ def get_CIFAR10(ratio):
     X_tr_ood = []
     Y_tr_ood = []
 
-    random.seed(4666) # radom seed initialization
+    # random.seed(4666) # radom seed initialization
     nan_num = torch.tensor(-1)
     for i in range(Y_tr.shape[0]):
         if Y_tr[i] in ID_labels:
@@ -101,7 +101,7 @@ def get_CIFAR100(ratio):
     X_tr_ood = []
     Y_tr_ood = []
 
-    random.seed(4666)
+    # random.seed(4666)
     nan_num = torch.tensor(-1)
     for i in range(Y_tr.shape[0]):
         if Y_tr[i] in ID_labels:

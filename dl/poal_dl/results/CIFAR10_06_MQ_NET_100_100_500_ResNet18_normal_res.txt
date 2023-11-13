@@ -1,0 +1,15 @@
+dataset: CIFAR10_06
+model: ResNet18
+AL strategy: MQ_NET
+number of labeled pool: 100
+number of unlabeled pool: 49900
+number of testing pool: 4000
+batch size: 100
+quota: 500
+time of repeat experiments: 1
+Size of training set is 100, accuracy is 0.25.
+Size of training set is 200, accuracy is 0.25.
+Size of training set is 300, accuracy is 0.2652.
+Size of training set is 400, accuracy is 0.25.
+Size of training set is 500, accuracy is 0.25.
+Size of training set is 600, accuracy is 0.25.

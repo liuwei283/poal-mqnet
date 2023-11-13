@@ -44,3 +44,9 @@ We completed this code with references of:
 1.  Pareto Optimization for Subset Selection. [Source Paper](https://cs.nju.edu.cn/zhouzh/zhouzh.files/publication/nips15poss.pdf) and [Source Code](http://www.lamda.nju.edu.cn/code_POSS.ashx)
 2.  DeepAL toolkit. [Source Paper](https://arxiv.org/pdf/2111.15258v1.pdf) and [Source Code](https://github.com/ej0cl6/deep-active-learning). PS. Can also look at our new [DeepAL+ toolkit](https://github.com/SineZHAN/deepALplus)!!!
 3.  Mahalanobis [Source Paper](https://arxiv.org/pdf/1807.03888.pdf) and [Source Code](https://github.com/pokaxpoka/deep_Mahalanobis_detector).
+
+
+# Baselines
+## MQ-Net
+python3 -u run_oodal.py -a MQ_NET -s 500 -q 5000 -b 500 -d CIFAR10_06 -t 5 -g 0 --epochs 50 --epochs-mqnet 50 --lr 0.1 --lr-mqnet 0.001 --mqnet-mode 'CONF'
+python3 -u run_oodal.py -a MQ_NET -s 500 -q 5000 -b 500 -d CIFAR10_06 -t 5 -g 0 --epochs 50 --epochs-mqnet 100 --lr 0.1 --lr-mqnet 0.001 --mqnet-mode 'CONF'

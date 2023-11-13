@@ -66,23 +66,23 @@ class MQ_Net(Strategy):
         label_Y = torch.index_select(label_Y_full, 0, torch.tensor(d))
 
         label_loader = DataLoader(self.handler(label_X, label_Y, transform=self.args['transform']), shuffle=False, batch_size=500, num_workers=5)
-        label_loader_train_transform = DataLoader(self.handler(label_X, label_Y, transform=self.args['transform_train']), shuffle=False, batch_size=64, num_workers=5)
+        label_loader_train_transform = DataLoader(self.handler(label_X, label_Y, transform=self.args['transform_train']), shuffle=True, batch_size=128, num_workers=5)
         unlabel_loader = DataLoader(self.handler(unlabel_X, unlabel_Y, transform=self.args['transform']), shuffle=False, batch_size=500, num_workers=5)
 
-        print("Getting labeled features...")
+        # print("Getting labeled features...")
         features_in = self.get_labeled_features(label_loader)
         
-        print("Getting unlabeled features...")
+        # print("Getting unlabeled features...")
         if self.args_input.mqnet_mode == 'CONF':
             informativeness, features_unlabeled, _, _ = self.get_unlabeled_features(unlabel_loader)
         if self.args_input.mqnet_mode == 'LL':
             informativeness, features_unlabeled, _, _ = self.get_unlabeled_features_LL(unlabel_loader)
 
-        print("Getting CSI scores...")
+        # print("Getting CSI scores...")
         purity = self.get_CSI_score(features_in, features_unlabeled)
         assert len(informativeness) == len(purity)
 
-        if 'mqnet' in self.models: # initial round, MQNet is not trained yet
+        if not ('mqnet' in self.models): # initial round, MQNet is not trained yet
             if self.args_input.mqnet_mode == 'LL':
                 informativeness, _, _ = standardize(informativeness)
             purity, _, _ = standardize(purity)
@@ -121,10 +121,10 @@ class MQ_Net(Strategy):
         unlabeled_loader = DataLoader(self.handler(new_unlabel_X, new_unlabel_Y, transform=self.args['transform']), batch_size=500, num_workers=5)
         delta_loader = DataLoader(self.handler(delta_X, delta_Y, transform=self.args['transform_train']), batch_size=32, num_workers=5)
 
-        print("Getting labeled features...")
+        # print("Getting labeled features...")
         features_in = self.get_labeled_features(label_loader_train)
 
-        print("Getting unlabeled features...")
+        # print("Getting unlabeled features...")
         if self.args_input.mqnet_mode == 'CONF':
             informativeness, features_delta, in_ood_masks, indices = self.get_unlabeled_features(delta_loader)
         elif self.args_input.mqnet_mode == 'LL':
@@ -155,7 +155,7 @@ class MQ_Net(Strategy):
 
             batch_idx = 0
             while (batch_idx < self.args_input.steps_per_epoch):
-                for data in tqdm(delta_loader):
+                for data in delta_loader:
                     self.optimizers['mqnet'].zero_grad()
                     inputs, labels, indexs = data[0].to(self.device), data[1].to(self.device), data[2].to(self.device)
 
@@ -194,7 +194,7 @@ class MQ_Net(Strategy):
         kwargs = {layer: True for layer in layers}
 
         features_in = torch.tensor([]).to(self.device)
-        for data in tqdm(labeled_in_loader):
+        for data in labeled_in_loader:
             inputs = data[0].to(self.device)
             _, couts = self.models['csi'](inputs, **kwargs)
             features_in = torch.cat((features_in, couts['simclr'].detach()), 0)
@@ -214,7 +214,7 @@ class MQ_Net(Strategy):
         in_ood_masks = torch.tensor([]).type(torch.LongTensor).to(self.device)
         indices = torch.tensor([]).type(torch.LongTensor).to(self.device)
 
-        for data in tqdm(unlabeled_loader):
+        for data in unlabeled_loader:
             inputs = data[0].to(self.device)
             labels = data[1].to(self.device)
             index = data[2].to(self.device)
@@ -236,7 +236,7 @@ class MQ_Net(Strategy):
     
     def save_model(self, model_path, model_path_suffix):
         torch.save(self.models['backbone'].state_dict(), model_path)
-        module_path = model_path_suffix + +'_module.params'
+        module_path = model_path_suffix + '_module.params'
         mqnet_path = model_path_suffix + '_mqnet.params'
         torch.save(self.models['module'].state_dict(), module_path)
         torch.save(self.models['mqnet'].state_dict(), mqnet_path)
@@ -294,15 +294,25 @@ class MQ_Net(Strategy):
         # initialize dataloader
         print("Starting to train the model - MQ-Net strategy...")
 
+        new_models = self.get_models()
+        self.models['backbone'] = new_models['backbone']
+        self.models['module'] = new_models['module']
+        self.clf = self.models['backbone']
+
+        self.get_optim_configurations(self.models, self.args_input)
+
         idxs_train = np.arange(self.n_pool)[self.idxs_lb] # id of labeled data instances
         X_train_full = self.X[idxs_train]
         Y_train_full = self.Y[idxs_train]
 
         # find ID samples
         a = list(range(Y_train_full.shape[0]))
+        # print(a)
+        # print(Y_train_full)
         b = torch.where(Y_train_full<0)[0].numpy() # idx of out of distribution data
+        # print(b)
         d = sorted(list(set(a).difference(set(b)))) # sorted idx of in distribution data
-
+        # print(d)
         Y_train = torch.index_select(Y_train_full, 0, torch.tensor(d)) # all training Y values (in distribution)
         if type(X_train_full) is np.ndarray:
             tmp = deepcopy(X_train_full)
@@ -327,8 +337,8 @@ class MQ_Net(Strategy):
                 self.schedulers['backbone'].step()
                 self.schedulers['module'].step()
         elif self.args_input.mqnet_mode == "CONF":
-            # for epoch in tqdm(range(self.args_input.epochs), leave=False, total=self.args_input.epochs):
-            for epoch in range(self.args_input.epochs):
+            for epoch in tqdm(range(self.args_input.epochs), leave=False, total=self.args_input.epochs):
+                # for epoch in range(self.args_input.epochs):
                 self.train_epoch(loader_tr)
                 self.schedulers['backbone'].step()
         else:
@@ -337,7 +347,7 @@ class MQ_Net(Strategy):
         return ood_sample_num
     
     def train_epoch_LL(self, epoch, dataloaders):
-        print("Traing (LL mode)")
+        # print("Traing (LL mode)")
         self.models['backbone'].train()
         self.models['module'].train()
 
@@ -374,13 +384,14 @@ class MQ_Net(Strategy):
                 batch_idx += 1
 
     def train_epoch(self, dataloaders):
-        print("Traing (CONF mode)")
+        # print("Traing (CONF mode)")
 
         self.models['backbone'].train()
 
         batch_idx = 0
         while(batch_idx < self.args_input.steps_per_epoch):
-            for data in tqdm(dataloaders, leave=False, total=len(dataloaders)):
+            # for data in tqdm(dataloaders, leave=False, total=len(dataloaders)):
+            for data in dataloaders:
                 inputs, labels = data[0].to(self.device), data[1].to(self.device)
 
                 self.optimizers['backbone'].zero_grad()
@@ -455,6 +466,8 @@ class MQ_Net(Strategy):
         if os.path.isfile(model_path):
             print('Load pre-trained CSI model, named: {}'.format(model_path))
             self.models['csi'].load_state_dict(torch.load(model_path))
+        else:
+            print("No CSI model weights!")
 
 
 # def csi_train(args, model, criterion, optimizer, scheduler, loader, device, simclr_aug=None, linear=None, linear_optim=None):

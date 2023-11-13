@@ -42,7 +42,7 @@ torch.set_printoptions(profile='full')
 #print(args_input.gpu)
 #torch.cuda.set_device(args_input.gpu)
 
-sys.stdout = Logger(os.path.abspath('') + '/../logfile/' + DATA_NAME+ '_'  + STRATEGY_NAME + '_' + str(NUM_QUERY) + '_' + str(NUM_INIT_LB) +  '_' + str(args_input.quota) + '_' + MODEL_NAME + '_normal_log.txt')
+sys.stdout = Logger(os.path.abspath('') + '/../logfile/' + 'epochsbackbone' + str(args_input.epochs) + '_epochsmqnet' + str(args_input.epochs_mqnet) + '_lrbackbone' + str(args_input.lr) + '_lrmqnet' + str(args_input.lr_mqnet) + '_normal_log.txt')
 warnings.filterwarnings('ignore')
 
 args = args_pool[DATA_NAME]
@@ -148,7 +148,7 @@ while (iteration > 0):
 		strategy.update(idxs_lb)
 
 		ood_sample_num[rd] = strategy.train()
-		print('ood sample num {}'.format(ood_sample_num[rd]))
+		print('ood sample num in this round {}'.format(ood_sample_num[rd] - ood_sample_num[rd - 1]))
 		#strategy.train()
 	
 		# round accuracy
@@ -167,15 +167,15 @@ while (iteration > 0):
 	
 	#save model
 	timestamp = re.sub('\.[0-9]*','_',str(datetime.datetime.now())).replace(" ", "_").replace("-", "").replace(":","")
-	model_path = './../modelpara/'+timestamp + DATA_NAME+ '_'  + STRATEGY_NAME + '_' + str(NUM_QUERY) + '_' + str(NUM_INIT_LB) +  '_' + str(args_input.quota) + '_' + MODEL_NAME  +'.params'
-	model_path_suffix = './../modelpara/'+timestamp + DATA_NAME+ '_'  + STRATEGY_NAME + '_' + str(NUM_QUERY) + '_' + str(NUM_INIT_LB) +  '_' + str(args_input.quota) + '_' + MODEL_NAME
+	model_path = './../modelpara/'+timestamp + '_epochsbackbone' + str(args_input.epochs) + '_epochsmqnet' + str(args_input.epochs_mqnet) + '_lrbackbone' + str(args_input.lr) + '_lrmqnet' + str(args_input.lr_mqnet) + '.params'
+	model_path_suffix = './../modelpara/'+ timestamp + '_epochsbackbone' + str(args_input.epochs) + '_epochsmqnet' + str(args_input.epochs_mqnet) + '_lrbackbone' + str(args_input.lr) + '_lrmqnet' + str(args_input.lr_mqnet)
 	strategy.save_model(model_path, model_path_suffix)
 	end = datetime.datetime.now()
 	acq_time.append(round(float((end-start).seconds),3))
 	
 # cal mean & standard deviation
 acc_m = []
-file_name_res_tot = DATA_NAME+ '_'  + STRATEGY_NAME + '_' + str(NUM_QUERY) + '_' + str(NUM_INIT_LB) +  '_' + str(args_input.quota) + '_' + MODEL_NAME  + '_normal_res_tot.txt'
+file_name_res_tot = 'epochsbackbone' + str(args_input.epochs) + '_epochsmqnet' + str(args_input.epochs_mqnet) + '_lrbackbone' + str(args_input.lr) + '_lrmqnet' + str(args_input.lr_mqnet) + '_normal_res_tot.txt'
 file_res_tot =  open(os.path.join(os.path.abspath('') + '/../results', '%s' % file_name_res_tot),'w')
 
 file_res_tot.writelines('dataset: {}'.format(DATA_NAME) + '\n')
@@ -204,7 +204,7 @@ file_res_tot.writelines('mean time: '+str(mean_time)+'. std dev acc: '+str(stdde
 
 # save result
 
-file_name_res = DATA_NAME+ '_'  + STRATEGY_NAME + '_' + str(NUM_QUERY) + '_' + str(NUM_INIT_LB) +  '_' + str(args_input.quota) + '_' + MODEL_NAME  + '_normal_res.txt'
+file_name_res = 'epochsbackbone' + str(args_input.epochs) + '_epochsmqnet' + str(args_input.epochs_mqnet) + '_lrbackbone' + str(args_input.lr) + '_lrmqnet' + str(args_input.lr_mqnet) + '_normal_res.txt'
 file_res =  open(os.path.join(os.path.abspath('') + '/../results', '%s' % file_name_res),'w')
 
 
@@ -226,7 +226,7 @@ for i in range(len(avg_acc)):
 
 # save result
 
-file_name_res_ood = DATA_NAME+ '_'  + STRATEGY_NAME + '_' + str(NUM_QUERY) + '_' + str(NUM_INIT_LB) +  '_' + str(args_input.quota) + '_' + MODEL_NAME  + '_normal_ood_num.txt'
+file_name_res_ood = 'epochsbackbone' + str(args_input.epochs) + '_epochsmqnet' + str(args_input.epochs_mqnet) + '_lrbackbone' + str(args_input.lr) + '_lrmqnet' + str(args_input.lr_mqnet) + '_normal_ood_num.txt'
 file_res_ood =  open(os.path.join(os.path.abspath('') + '/../results', '%s' % file_name_res_ood),'w')
 
 

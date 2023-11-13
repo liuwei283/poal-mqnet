@@ -1,0 +1,12 @@
+dataset: CIFAR10_06
+model: ResNet18
+AL strategy: MQ_NET
+number of labeled pool: 100
+number of unlabeled pool: 49900
+number of testing pool: 4000
+batch size: 100
+quota: 500
+time of repeat experiments: 1
+0: 0.253
+mean acc: 0.253. std dev acc: 0.0
+mean time: 249.0. std dev acc: 0.0

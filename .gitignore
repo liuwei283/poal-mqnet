@@ -4,4 +4,10 @@ dl/poal_dl/logfile/*
 dl/poal_dl/weights/*
 *.condor
 *.sh
+__pycache__/
+nohup.out
+dl/poal/query_strategies/__pycache__/
+dl/poal/modelpara/*
+dl/poal/results/*
+dl/poal/code/nohup.out
 
