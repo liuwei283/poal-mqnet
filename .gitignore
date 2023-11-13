@@ -2,12 +2,12 @@ to-do.md
 dl/poal_dl/data/*
 dl/poal_dl/logfile/*
 dl/poal_dl/weights/*
+dl/poal_dl/modelpara/*
+dl/poal_dl/results/*
 *.condor
 *.sh
 __pycache__/
 nohup.out
 dl/poal/query_strategies/__pycache__/
-dl/poal/modelpara/*
-dl/poal/results/*
 dl/poal/code/nohup.out
 
